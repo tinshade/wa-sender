@@ -1,7 +1,8 @@
 import os, csv, time, traceback
 import pyperclip
 from pynput.keyboard import Key, Controller
-
+from threading import Thread
+from playsound import playsound
 
 class WASender:
     
@@ -93,7 +94,7 @@ class WASender:
             print("Something went wrong while reading your message file!", e)
             return False
     
-    def parse_and_send(self, csv_file_path:str) -> tuple[list,int,bool]:
+    def parse_and_send(self, csv_file_path:str) -> tuple[list,int,str]:
         try:
             done_for:list = []
             fail_count:int = 0
@@ -103,7 +104,9 @@ class WASender:
                     if "First" in line[0]:
                         continue
                     status:bool = True
-                    name, _number = line[0], line[1] #TODO: Add number-based messaging support
+                    #TODO: Add emoji-based name messaging support
+                    #TODO: Add number-based messaging support
+                    name, _number = line[0], line[1] 
                     while status:
                         status = self.start_new_chat(contact_name=name)
                         status = self.send_message_in_chat(message=self.message)
@@ -115,7 +118,7 @@ class WASender:
                             print(f"Message sending failed to {name}!")
                         status = False
             
-            return done_for, fail_count, False if fail_count else True
+            return done_for, fail_count, "failure" if fail_count else "success"
         
         except Exception as e:
             traceback.print_exc()
@@ -141,6 +144,18 @@ class WASender:
             return False, e
     
 
+    def alert_user(self, alert_type:str):
+        try:
+            def play_thread_function():
+                playsound(f"{alert_type}.mp3") #TODO: Find alternative library to play from path
+
+            play_thread = Thread(target=play_thread_function)
+            play_thread.start()
+        except Exception as e:
+            traceback.print_exc()
+            print("Something went wrong while alerting user!", e)
+            return False, e
+
 
     def logic_driver(self):
         #TODO: Time the code
@@ -160,7 +175,8 @@ class WASender:
             print("Successes: ", dones)
             print("Fails: ",fails)
             print("Final Status: ", status)
-            return status
+            self.alert_user(alert_type=status)
+            return False if fails else True
 
         except Exception as e:
             traceback.print_exc()
