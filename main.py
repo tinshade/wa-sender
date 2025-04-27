@@ -1,5 +1,5 @@
 import os, csv, time, traceback
-from pynput import keyboard
+import pyperclip
 from pynput.keyboard import Key, Controller
 
 
@@ -53,9 +53,14 @@ class WASender:
             print("Something went wrong while starting a new chat!", e)
             return False
     
-    def send_message_in_chat(self, message:str, contact_name:str="", only_type:bool=False) -> bool:
+    def send_message_in_chat(self, message:str, should_paste:bool=True, contact_name:str="", only_type:bool=False) -> bool:
         try:
-            self.controller.type(message)
+            time.sleep(1)
+            if should_paste:
+                with self.controller.pressed(Key.ctrl.value):
+                    self.controller.tap('v')
+            else:
+                self.controller.type(message)
             time.sleep(1)
             if not only_type:
                 self.controller.tap(key=Key.enter)
@@ -67,13 +72,20 @@ class WASender:
             print("Something went wrong while sending your WhatsApp message!", e)
             return False
     
-    def commit_message_to_memory(self, message_file_path:str) -> bool:
+    def commit_message_to_memory(self, message_file_path:str, copy_paste_mode:bool=True) -> bool:
         try:
-            with open(file=message_file_path, mode='r') as file:
-                lines = file.readlines()
-                for line in lines:
-                    self.message += line
-            print("Message commited to memory sucessfully!")
+
+            if copy_paste_mode:
+                with open(message_file_path, 'r', encoding='utf-8') as file:
+                    content = file.read()
+                    pyperclip.copy(content)
+                    print(f"Content of '{message_file_path}' copied to clipboard.")
+            else:
+                with open(file=message_file_path, mode='r', encoding='utf-8') as file:
+                    lines = file.readlines()
+                    for line in lines:
+                        self.message += line
+                print("Message commited to memory sucessfully!")
             return True
         
         except Exception as e:
@@ -161,5 +173,6 @@ class WASender:
 
 
 if __name__ == "__main__":
+    #TODO: add a completion or failure sound module
     manager:WASender = WASender(skip_verification=True)
 
