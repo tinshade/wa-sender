@@ -6,7 +6,8 @@ from playsound import playsound
 
 class WASender:
     
-    def __init__(self, skip_verification:bool=False):
+    def __init__(self, skip_verification:bool=False, wait_multiplier:float=1.5):
+        self.wait_multiplier = wait_multiplier
         self.skip_verification = skip_verification
         self.verification_status:bool = self.verify_with_user()
         if not self.verification_status:
@@ -29,25 +30,25 @@ class WASender:
     
     def start_whatsapp(self):
         self.controller.tap(Key.cmd)
-        time.sleep(3)
+        time.sleep(self.wait_multiplier * 3)
         self.controller.type("WhatsApp")
-        time.sleep(3)
+        time.sleep(self.wait_multiplier * 3)
         self.controller.tap(Key.enter)
-        time.sleep(3)
+        time.sleep(self.wait_multiplier * 3)
     
-    def start_new_chat(self, contact_name:str) -> bool:
+    def start_new_chat(self, contact_number:str, contact_name:str) -> bool:
         try:
             with self.controller.pressed(Key.ctrl.value):
                 self.controller.tap('n')
-            time.sleep(0.5)
-            self.controller.type(contact_name)
-            time.sleep(2)
+            time.sleep(self.wait_multiplier * 0.5)
+            self.controller.type(contact_number if contact_number else contact_name)
+            time.sleep(self.wait_multiplier * 2)
             self.controller.tap(key=Key.tab)
-            time.sleep(1)
+            time.sleep(self.wait_multiplier * 1)
             self.controller.tap(key=Key.tab)
-            time.sleep(1)
+            time.sleep(self.wait_multiplier * 1)
             self.controller.tap(key=Key.enter)
-            time.sleep(1)
+            time.sleep(self.wait_multiplier * 1)
             return True
         except Exception as e:
             traceback.print_exc()
@@ -56,16 +57,16 @@ class WASender:
     
     def send_message_in_chat(self, message:str, should_paste:bool=True, contact_name:str="", only_type:bool=False) -> bool:
         try:
-            time.sleep(1)
+            time.sleep(self.wait_multiplier * 1)
             if should_paste:
                 with self.controller.pressed(Key.ctrl.value):
                     self.controller.tap('v')
             else:
                 self.controller.type(message)
-            time.sleep(1)
+            time.sleep(self.wait_multiplier * 1)
             if not only_type:
                 self.controller.tap(key=Key.enter)
-                time.sleep(1)
+                time.sleep(self.wait_multiplier * 1)
             print(f"Message sent{ f' to {contact_name.capitalize()}' if contact_name else '!'}")
             return True
         except Exception as e:
@@ -104,14 +105,12 @@ class WASender:
                     if "First" in line[0]:
                         continue
                     status:bool = True
-                    #TODO: Add emoji-based name messaging support
-                    #TODO: Add number-based messaging support
-                    name, _number = line[0], line[1] 
+                    name, number = line[0], line[1] 
                     while status:
-                        status = self.start_new_chat(contact_name=name)
+                        status = self.start_new_chat(contact_number=number, contact_name=name)
                         status = self.send_message_in_chat(message=self.message)
                         if status:
-                            done_for.append((name,_number))
+                            done_for.append((name,number))
                             print(f"Message successfully sent to {name}!")
                         else:
                             fail_count += 1
@@ -158,7 +157,6 @@ class WASender:
 
 
     def logic_driver(self):
-        #TODO: Time the code
         try:
             status, message = self.validate_inputs()
             if not status:
