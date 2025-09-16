@@ -6,7 +6,7 @@ from playsound import playsound
 
 class WASender:
     
-    def __init__(self, skip_verification:bool=False, wait_multiplier:float=1.5):
+    def __init__(self, skip_verification:bool=False, wait_multiplier:float=1.5, has_file:bool = False, file_path:str = ""):
         self.wait_multiplier = wait_multiplier
         self.skip_verification = skip_verification
         self.verification_status:bool = self.verify_with_user()
@@ -18,7 +18,9 @@ class WASender:
         self.app_name = "WA Sender"
         self.wanted_files:list = ['contacts.csv', 'message.txt']
         self.message:str = """"""
-        self.logic_driver()
+        self.has_file:bool = has_file
+        self.default_file_path:str = file_path if file_path else os.path.join(os.getcwd(), 'data', 'file.pdf')
+        self.logic_driver(has_file=self.has_file, file_path=self.default_file_path)
     
     def verify_with_user(self) -> bool:
         if self.skip_verification:
@@ -53,6 +55,28 @@ class WASender:
         except Exception as e:
             traceback.print_exc()
             print("Something went wrong while starting a new chat!", e)
+            return False
+        
+    def send_attachment_in_chat(self, contact_name:str="") -> bool:
+        try:
+            time.sleep(self.wait_multiplier * 1)
+            if self.has_file:
+                with self.controller.pressed(Key.ctrl.value):
+                    self.controller.tap('v')
+                time.sleep(self.wait_multiplier * 1)
+                self.controller.tap(key=Key.tab) #1
+                time.sleep(self.wait_multiplier * 1)
+                self.controller.tap(key=Key.tab) #2
+                time.sleep(self.wait_multiplier * 1)
+                self.controller.tap(key=Key.tab) #3
+                time.sleep(self.wait_multiplier * 1)
+                self.controller.tap(key=Key.enter)
+                time.sleep(self.wait_multiplier * 1)
+            print(f"Attachment sent{ f' to {contact_name.capitalize()}' if contact_name else '!'}")
+            return True
+        except Exception as e:
+            traceback.print_exc()
+            print("Something went wrong while sending your WhatsApp message!", e)
             return False
     
     def send_message_in_chat(self, message:str, should_paste:bool=True, contact_name:str="", only_type:bool=False) -> bool:
@@ -108,7 +132,10 @@ class WASender:
                     name, number = line[0], line[1] 
                     while status:
                         status = self.start_new_chat(contact_number=number, contact_name=name)
-                        status = self.send_message_in_chat(message=self.message)
+                        if self.has_file:
+                            self.send_attachment_in_chat(contact_name=name)
+                        else:
+                            status = self.send_message_in_chat(message=self.message)
                         if status:
                             done_for.append((name,number))
                             print(f"Message successfully sent to {name}!")
@@ -156,7 +183,7 @@ class WASender:
             return False, e
 
 
-    def logic_driver(self):
+    def logic_driver(self, has_file:bool = False, file_path:str = ""):
         try:
             status, message = self.validate_inputs()
             if not status:
@@ -164,10 +191,12 @@ class WASender:
                 return status
             
             self.start_whatsapp()
-            
-            status = self.commit_message_to_memory(message_file_path=self.wanted_files[1])
-            if not status:
-                return status
+
+            if not has_file:
+                status = self.commit_message_to_memory(message_file_path=self.wanted_files[1])
+                if not status:
+                    return status
+
             
             dones, fails,status = self.parse_and_send(csv_file_path=self.wanted_files[0])
             print("Successes: ", dones)
@@ -188,5 +217,7 @@ class WASender:
 
 if __name__ == "__main__":
     #TODO: add a completion or failure sound module
-    manager:WASender = WASender(skip_verification=True)
+    manager:WASender = WASender(skip_verification=True, wait_multiplier=1, has_file=False)
+    input("Copy the file to clipboard and enter anything to proceed")
+    manager:WASender = WASender(skip_verification=True, wait_multiplier=1, has_file=True)
 
